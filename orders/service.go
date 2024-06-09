@@ -25,6 +25,9 @@ func (s *service) ValidateOrder(ctx context.Context, pb *pb.CreateOrderRequest) 
 	}
 
     mergedItems := mergeItemsQuantities(p.Items)
+    log.Print(mergedItems)
+
+    // validate with the stock service
 
 	return nil
 }
