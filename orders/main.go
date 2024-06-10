@@ -8,6 +8,7 @@ import (
 
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/tiaguito/commons"
+	"github.com/tiaguito/commons/broker"
 	"github.com/tiaguito/commons/consul"
 	"github.com/tiaguito/commons/discovery"
 	"google.golang.org/grpc"
@@ -17,6 +18,10 @@ var (
 	serviceName = "orders"
 	grpcAddr    = commons.EnvString("GRPC_ADDR", "localhost:2000")
 	consulAddr  = commons.EnvString("CONSUL_ADDR", "localhost:8500")
+	amqpUser    = commons.EnvString("RABBITMQ_USER", "guest")
+	amqpPass    = commons.EnvString("RABBITMQ_PASS", "guest")
+	amqpHost    = commons.EnvString("RABBITMQ_HOST", "localhost")
+	amqpPort    = commons.EnvString("RABBITMQ_PORT", "5672")
 )
 
 func main() {
@@ -42,6 +47,12 @@ func main() {
 
 	defer registry.Deregister(ctx, instanceID, serviceName)
 
+	ch, close := broker.Connect(amqpUser, amqpPass, amqpHost, amqpPort)
+	defer func() {
+		close()
+		ch.Close()
+	}()
+
 	grpcServer := grpc.NewServer()
 
 	l, err := net.Listen("tcp", grpcAddr)
@@ -53,7 +64,7 @@ func main() {
 
 	store := NewStore()
 	svc := NewService(store)
-	NewGRPCHandler(grpcServer, svc)
+	NewGRPCHandler(grpcServer, svc, ch)
 
 	svc.CreateOrder(context.Background())
 
